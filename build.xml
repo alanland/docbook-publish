@@ -167,11 +167,11 @@
 		<attribute name="dest"/>
 		<sequential>
 			<copy todir="${out.dir}/@{dest}/resources/">
-				<fileset file="${res.dir}/css/style.css" />
+				<fileset dir="${res.dir}/themes" />
 			</copy>
 		</sequential>
 	</macrodef>
-	
+		
 	<macrodef name="copy-epub-css">
 		<attribute name="dest"/>
 		<sequential>
