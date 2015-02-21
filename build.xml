@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build">
+	<include file="props.xml" />
+	<!--property file="build.properties" /-->
+	<property name="xsl.dir" value="${basedir}/xsl" />
+	<property name="docbook.xsl.dir" value="${xsl.dir}/docbook" />
+	<property name="help.dir" value="${basedir}/help" />
+	<property name="doc.dir" value="doc" />
+	<property name="doc.main" value="${doc.dir}/main.xml" />
+	<property name="res.dir" value="${basedir}/res" />
+	<!-- http://goo.gl/x9WmJ http://goo.gl/ZJ3WB -->
+	<property name="font.package.url" value="http://goo.gl/uSmEM" />
+	<property name="epub.ch1.font" value="STHeiti" />
+	<property name="out.dir" value="${basedir}/out" />
+	<property name="out.filename" value="index" />
+	<property name="lib.dir" value="${basedir}/lib" />
+	<property name="dist.version" value="1.5.0" />
+
+	<path id="saxon.lib.classpath">
+		<fileset dir="${lib.dir}/saxon">
+			<include name="*.jar" />
+		</fileset>
+		<fileset dir="${lib.dir}/common">
+			<include name="*.jar" />
+		</fileset>
+		<pathelement location="${docbook.xsl.dir}/extensions/saxon65.jar" />
+	</path>
+	
+	<path id="fop.lib.classpath">
+		<fileset dir="${lib.dir}/fop">
+			<include name="*.jar" />
+		</fileset>
+		<fileset dir="${lib.dir}/common">
+			<include name="*.jar" />
+		</fileset>
+	</path>
+	
+	<path id="xalan.lib.classpath">
+		<fileset dir="${lib.dir}/xalan">
+			<include name="*.jar" />
+		</fileset>
+		<fileset dir="${lib.dir}/common">
+			<include name="*.jar" />
+		</fileset>
+	</path>
+	
+	<path id="xfc.lib.classpath">
+		<fileset dir="${lib.dir}/xfc">
+			<include name="*.jar" />
+		</fileset>
+		<fileset dir="${lib.dir}/common">
+			<include name="*.jar" />
+		</fileset>
+	</path>
+	
+	<path id="epubcheck.lib.classpath">
+		<fileset dir="${lib.dir}/epubcheck">
+			<include name="*.jar" />
+		</fileset>
+	</path>
+
+	<path id="webhelp.classpath">
+		<pathelement location="${extensions.dir}/webhelpindexer.jar"/>
+		<pathelement location="${extensions.dir}/lucene-analyzers-3.0.0.jar"/>
+		<pathelement location="${extensions.dir}/lucene-core-3.0.0.jar"/>
+		<pathelement location="${extensions.dir}/tagsoup-1.2.1.jar"/>
+		<fileset dir="${lib.dir}/common">
+			<include name="*.jar"/>
+		</fileset>
+	</path>	
+
+	<target name="detect">
+		<condition property="${fontpackage.not.exist}">
+			<not>
+				<available file="${res.dir}/fop/fonts.zip" type="file"></available>
+			</not>
+		</condition>
+	</target>
+	
+	<target name="download-font-package" if="${fontpackage.not.exist}" depends="detect">
+		<get src="${font.package.url}" dest="${res.dir}/fop/fonts.zip" verbose="true"/>
+		<unzip src="${res.dir}/fop/fonts.zip" dest="${res.dir}/fop/" />
+	</target>
+
+	<target name="init">
+		<delete dir="${out.dir}" />
+		<mkdir dir="${out.dir}" />
+	</target>
+	
+	<macrodef name="xsl-proc">
+		<attribute name="in"/>
+		<attribute name="out"/>
+		<attribute name="style"/>
+		<sequential>
+			<echo>Transform XML from @{in} to @{out} using XSL @{style}.</echo>
+			<!--
+			<java classname="org.apache.xalan.xslt.Process" fork="yes">
+				<sysproperty key="org.apache.xerces.xni.parser.XMLParserConfiguration" value="org.apache.xerces.parsers.XIncludeParserConfiguration" />
+				<sysproperty key="xslthl.config" value="file:///${docbook.xsl.dir}/highlighting/xslthl-config.xml" />
+				<arg line="-out @{out}"/>
+				<arg line="-in @{in}"/>
+				<arg line="-xsl @{style}"/>
+				<arg line="-param use.extensions 1"/>
+				<arg line="-v"/>
+				<classpath>
+					<path refid="xalan.classpath"/>
+				</classpath>
+			</java>
+			-->
+			
+			<java classname="com.icl.saxon.StyleSheet" fork="yes">
+				<sysproperty key="javax.xml.parsers.DocumentBuilderFactory" value="org.apache.xerces.jaxp.DocumentBuilderFactoryImpl" />
+				<sysproperty key="javax.xml.parsers.SAXParserFactory" value="org.apache.xerces.jaxp.SAXParserFactoryImpl" />
+				<sysproperty key="org.apache.xerces.xni.parser.XMLParserConfiguration" value="org.apache.xerces.parsers.XIncludeParserConfiguration" />
+				<sysproperty key="xslthl.config" value="file:///${docbook.xsl.dir}/highlighting/xslthl-config.xml" />
+				<arg line="-o @{out}"/>
+				<arg line=" @{in}"/>
+				<arg line=" @{style}"/>
+				<arg line=" use.extensions=1"/>
+				<arg line=" textinsert.extension=1" />
+				<classpath>
+					<path refid="saxon.lib.classpath"/>
+				</classpath>
+			</java>
+			
+			<!--
+			<xslt in="@{in}" style="@{style}" out="@{out}">
+				<classpath refid="xalan.classpath" />
+				<sysproperty key="org.apache.xerces.xni.parser.XMLParserConfiguration" value="org.apache.xerces.parsers.XIncludeParserConfiguration" />
+			</xslt>
+			-->
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="copy-res">
+		<attribute name="dest"/>
+		<sequential>
+			<mkdir dir="${out.dir}/@{dest}" />
+			<copy todir="${out.dir}/@{dest}/resources" failonerror="false">
+				<fileset dir="${doc.dir}/resources" />
+			</copy>
+			<copy todir="${out.dir}/@{dest}/images" failonerror="false">
+				<fileset dir="${doc.dir}/images" />
+			</copy>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="copy-admonitions">
+		<attribute name="dest"/>
+		<sequential>
+			<copy todir="${out.dir}/@{dest}/resources/admonitions">
+				<fileset dir="${res.dir}/admonitions" />
+			</copy>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="copy-callouts">
+		<attribute name="dest"/>
+		<sequential>
+			<copy todir="${out.dir}/@{dest}/resources/callouts">
+				<fileset dir="${res.dir}/callouts" />
+			</copy>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="copy-css">
+		<attribute name="dest"/>
+		<sequential>
+			<copy todir="${out.dir}/@{dest}/resources/">
+				<fileset file="${res.dir}/css/style.css" />
+			</copy>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="copy-epub-css">
+		<attribute name="dest"/>
+		<sequential>
+			<copy tofile="${out.dir}/@{dest}/resources/style.css" file="${res.dir}/css/epub-style.css" />
+			<replace file="${out.dir}/@{dest}/resources/style.css" token="@epub.ch1.font@" value="${epub.ch1.font}" encoding="UTF-8"/>
+		</sequential>
+	</macrodef>
+
+	<target name="build-html" depends="init" description="Generates HTML files from DocBook XML">
+		<copy-admonitions dest="html"/>
+		<copy-callouts dest="html"/>
+		<copy-res dest="html" />
+		<copy-css dest="html" />
+		<xsl-proc in="${doc.main}" style="${xsl.dir}/html.xsl" out="${out.dir}/html/${out.filename}.html" />
+	</target>
+	
+	<target name="build-chunk" depends="init" description="Generates Chunk files from DocBook XML">
+		<copy-admonitions dest="chunk"/>
+		<copy-callouts dest="chunk"/>
+		<copy-res dest="chunk" />
+		<copy-css dest="chunk" />
+		<xsl-proc in="${doc.main}" style="${xsl.dir}/chunk.xsl" out="${out.dir}/chunk/index.html" />
+	</target>
+
+	<taskdef name="fop" classname="org.apache.fop.tools.anttasks.Fop">
+		<classpath refid="fop.lib.classpath" />
+	</taskdef>
+
+	<target name="read-font" depends="init, download-font-package">
+		<java classname="org.apache.fop.tools.fontlist.FontListMain" fork="yes">
+			<arg line="-c ${res.dir}/fop/fop-conf.xml" />
+			<arg line="${out.dir}/font-sample.pdf" />
+			<classpath>
+				<path refid="fop.lib.classpath" />
+			</classpath>
+		</java>
+	</target>
+
+	<target name="build-fo" depends="init">
+		<copy-res dest="fo" />
+		<copy-admonitions dest="fo"/>
+		<copy-callouts dest="fo"/>
+		<xsl-proc in="${doc.main}" style="${xsl.dir}/fo.xsl" out="${out.dir}/fo/index.fo.xml" />
+		<replace file="${out.dir}/fo/index.fo.xml" encoding="UTF-8">
+			<replacetoken><![CDATA[http://xml.apache.org/fop/extensions]]></replacetoken>
+			<replacevalue><![CDATA[http://xmlgraphics.apache.org/fop/extensions]]></replacevalue>
+		</replace>
+	</target>
+
+	<target name="build-pdf" depends="build-fo, download-font-package" description="Generates PDF files from DocBook XML">
+		<fop format="application/pdf" fofile="${out.dir}/fo/index.fo.xml"
+			outfile="${out.dir}/${out.filename}.pdf" userconfig="${res.dir}/fop/fop-conf.xml"
+			basedir="${out.dir}/fo"/>
+	</target>
+
+	<target name="build-rtf" depends="build-fo" description="Generates PDF files from DocBook XML">
+		<fop format="application/rtf" fofile="${out.dir}/fo/index.fo.xml" outfile="${out.dir}/${out.filename}.rtf" userconfig="${res.dir}/fonts/fop-conf.xml" />
+	</target>
+
+	<target name="build-wml" depends="build-fo" description="Generates WML files from DocBook XML">
+		<java classname="com.xmlmind.fo.converter.Driver" fork="yes">
+			<arg line="-outputFormat=wml " />
+			<arg line="${out.dir}/fo/index.fo.xml" />
+			<arg line="${out.dir}/${out.filename}.xml" />
+			<classpath>
+				<path refid="xfc.lib.classpath" />
+			</classpath>
+		</java>
+	</target>
+	
+	<target name="build-epub" depends="init" description="Generates EPUB files from DocBook XML">
+		<xsl-proc in="${doc.main}" style="${xsl.dir}/epub.xsl" out="${out.dir}/epub/index.html" />
+		<move todir="${out.dir}/epub/OEBPS">
+			<fileset dir="${basedir}/OEBPS" />
+		</move>
+		<move todir="${out.dir}/epub/META-INF">
+			<fileset dir="${basedir}/META-INF" />
+		</move>
+		<copy-res dest="epub/OEBPS" />
+		<copy-epub-css dest="epub/OEBPS"/>
+		
+		<copy tofile="${out.dir}/epub/OEBPS/resources/fonts/${epub.ch1.font}" file="${res.dir}/fop/fonts/${epub.ch1.font}" failonerror="false"/>
+		
+		<copy tofile="${out.dir}/epub/META-INF/com.apple.ibooks.display-options.xml" file="${res.dir}/epub/com.apple.ibooks.display-options.xml" />
+		<replace dir="${out.dir}/epub/OEBPS/" encoding="UTF-8">
+			<include name="**/*.html"/>
+			<replacetoken><![CDATA[<html xmlns="http://www.w3.org/1999/xhtml"><head><title>]]></replacetoken>
+			<replacevalue><![CDATA[<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-CN"><head><title>]]></replacevalue>
+		</replace>
+		<delete file="${out.dir}/epub/index.html" />
+		<mkdir dir="${out.dir}/tmp/"/>
+		<echo message="application/epub+zip" file="${out.dir}/tmp/mimetype"/>
+		<zip destfile="${out.dir}/tmp/temp.mimetype" basedir="${out.dir}/tmp" compress="false" includes="mimetype" />
+		<zip destfile="${out.dir}/tmp/temp.zip" basedir="${out.dir}/epub/" level="9" compress="true" />
+		<zip destfile="${out.dir}/${out.filename}.epub" update="true" keepcompression="true" encoding="UTF-8" excludes="*.html">
+			<zipfileset src="${out.dir}/tmp/temp.mimetype" />
+			<zipfileset src="${out.dir}/tmp/temp.zip" />
+		</zip>
+		
+		<delete dir="${out.dir}/tmp/" />
+		
+		<!--
+		<java classname="com.adobe.epubcheck.tool.Checker" fork="yes">
+			<arg line="${out.dir}/index.epub"/>
+			<classpath>
+				<path refid="epubcheck.classpath"/>
+			</classpath>
+		</java>
+		-->
+		
+	</target>
+
+	<!--webhelp process-->
+	<target name="build-webhelp" depends="init" description="Generates WebHelp files from DocBook XML">
+		<xsl-proc in="${doc.main}" style="${xsl.dir}/webhelp.xsl" out="${out.dir}/webhelp/content/index2.html" />
+
+		<!-- Copy common content such as js files of tree, css etc. to template folder. They will be copied to doc folder. They are NOT page specific! -->
+		<copy todir="${out.dir}/webhelp">
+			<fileset dir="${docbook.xsl.dir}/webhelp/template">
+				<include name="**/*"/>
+				<exclude name="**/content/search/**"/>
+			</fileset>
+		</copy>
+
+		<copy todir="${out.dir}/webhelp/content/resources/images">
+			<fileset dir="${doc.dir}/resources/images" />
+		</copy>
+	</target>
+	
+	<target name="help">
+		<echo>
+用法:
+  build:           默认编译。
+  help:            打印帮助信息。
+  build-html:      单页html编译。
+  build-chunk:     多页html编译。
+  build-pdf:       pdf编译。
+  build-epub:      epub编译。
+  build-webhelp:   webhelp编译。
+		</echo>
+	</target>
+
+	<target name="build" depends="build-html, build-chunk, build-pdf" description="Generates All files from DocBook XML" />
+	<target name="build-dist">
+		<zip destfile="docbook-ant-tools-${dist.version}.zip">
+			<zipfileset dir="${basedir}" prefix="docbook-ant-tools">
+			<exclude name="doc/" />
+			<exclude name="out/" />
+			<exclude name="*.zip" />
+			<exclude name="build.properties" />
+			<exclude name=".*" />
+			<exclude name=".*/" />
+		</zipfileset>
+		</zip>
+		<checksum file="docbook-ant-tools-${dist.version}.zip" algorithm="SHA-1" property="dist.sha1.sum"/>
+		<echo>${dist.sha1.sum}</echo>
+	</target>
+</project>

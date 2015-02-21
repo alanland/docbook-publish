@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build">
+	<property name="doc.dir" value="/home/journey/day/svn/x-oms/trunk/document/design/database" />
+	<property name="doc.main" value="/home/journey/day/svn/x-oms/trunk/document/design/database/数据库设计.xml" />
+</project>
+

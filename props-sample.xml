@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build">
+	<property name="doc.dir" value="f:\ZhuXiao\programs\MAP\mySCM_Ark-trunk\document\misc\DocBook简介" />
+	<property name="doc.main" value="${doc.dir}\DocBook简介.xml" />
+</project>

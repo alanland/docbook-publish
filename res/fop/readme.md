@@ -1,0 +1,1 @@
+You can donwload font files from http://goo.gl/KAUdT and unpack it into this directory.
